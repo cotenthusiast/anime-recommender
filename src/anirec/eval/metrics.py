@@ -1,9 +1,8 @@
 """Ranking metrics for top-*k* recommendation evaluation.
 
 All functions follow the same convention:
-- ``recs``:  ``{user_id: [item_id, …]}`` — predicted ranked lists.
-- ``truth``: ``{user_id: item_id}``       — ground-truth item per user
-  (leave-one-out setting).
+- ``recs``:  ``{user_id: [item_id, …]}``        — predicted ranked lists.
+- ``truth``: ``{user_id: set[item_id]}``         — ground-truth items per user.
 """
 
 from __future__ import annotations
@@ -11,15 +10,18 @@ from __future__ import annotations
 import numpy as np
 
 
-def recall_at_k(recs: dict[int, list[int]], truth: dict[int, int], k: int) -> float:
-    """Compute Recall@k (fraction of users whose ground-truth item appears in the top-*k*).
+def recall_at_k(recs: dict[int, list[int]], truth: dict[int, set[int]], k: int) -> float:
+    """Compute Recall@k averaged over all users.
+
+    For each user, Recall@k = |hits| / |truth| where hits are the
+    ground-truth items that appear in the top-k recommendations.
 
     Parameters
     ----------
     recs : dict[int, list[int]]
         Recommendations per user.
-    truth : dict[int, int]
-        Ground-truth item per user.
+    truth : dict[int, set[int]]
+        Ground-truth items per user.
     k : int
         Cut-off length.
 
@@ -28,28 +30,26 @@ def recall_at_k(recs: dict[int, list[int]], truth: dict[int, int], k: int) -> fl
     float
         Recall@k averaged over all users in *truth*.
     """
-    hits = 0
-    for user in truth:
-        recommendations = recs[user][:k]
-        actual = truth[user]
-        if actual in recommendations:
-            hits += 1
-    return hits / len(truth)
+    scores = []
+    for user, actual in truth.items():
+        recommendations = set(recs.get(user, [])[:k])
+        hits = len(actual & recommendations)
+        scores.append(hits / len(actual))
+    return float(np.mean(scores))
 
 
-def ndcg_at_k(recs: dict[int, list[int]], truth: dict[int, int], k: int) -> float:
-    """Compute NDCG@k in a leave-one-out setting.
+def ndcg_at_k(recs: dict[int, list[int]], truth: dict[int, set[int]], k: int) -> float:
+    """Compute NDCG@k averaged over all users.
 
-    With a single relevant item per user the ideal DCG is always 1,
-    so NDCG reduces to ``1 / log2(rank + 1)`` when the item is found
-    and 0 otherwise.
+    DCG sums ``1 / log2(rank + 1)`` for each hit. Ideal DCG assumes
+    all ground-truth items appear at the top ranks.
 
     Parameters
     ----------
     recs : dict[int, list[int]]
         Recommendations per user.
-    truth : dict[int, int]
-        Ground-truth item per user.
+    truth : dict[int, set[int]]
+        Ground-truth items per user.
     k : int
         Cut-off length.
 
@@ -59,12 +59,12 @@ def ndcg_at_k(recs: dict[int, list[int]], truth: dict[int, int], k: int) -> floa
         NDCG@k averaged over all users in *truth*.
     """
     scores = []
-    for user in truth:
-        recommendations = recs[user][:k]
-        actual = truth[user]
-        if actual in recommendations:
-            rank = recommendations.index(actual) + 1
-            scores.append(1.0 / np.log2(rank + 1))
-        else:
-            scores.append(0.0)
+    for user, actual in truth.items():
+        recommendations = recs.get(user, [])[:k]
+        dcg = 0.0
+        for rank, item in enumerate(recommendations, start=1):
+            if item in actual:
+                dcg += 1.0 / np.log2(rank + 1)
+        ideal_dcg = sum(1.0 / np.log2(i + 2) for i in range(min(len(actual), k)))
+        scores.append(dcg / ideal_dcg if ideal_dcg > 0 else 0.0)
     return float(np.mean(scores))

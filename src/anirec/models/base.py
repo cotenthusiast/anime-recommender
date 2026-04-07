@@ -40,3 +40,9 @@ class Recommender(ABC):
         dict[int, list[int]]
             ``{user_id: [item_id, …]}`` with at most *k* items each.
         """
+
+    def save(self, path: str) -> None:
+        raise NotImplementedError(f"{self.__class__.__name__} does not support save")
+
+    def load(self, path: str) -> None:
+        raise NotImplementedError(f"{self.__class__.__name__} does not support save")

@@ -38,10 +38,10 @@ def load_parquet(path: str | Path, threads: int = 4) -> duckdb.DuckDBPyConnectio
     return con
 
 
-def load_truth(test_path: str | Path) -> dict[int, int]:
-    """Load a test/val split into a ``{user_id: item_id}`` lookup.
+def load_truth(test_path: str | Path) -> dict[int, set[int]]:
+    """Load a test/val split into a ``{user_id: set[item_id]}`` lookup.
 
-    Assumes leave-one-out format (one ground-truth item per user).
+    Supports multiple ground-truth items per user.
 
     Parameters
     ----------
@@ -50,8 +50,8 @@ def load_truth(test_path: str | Path) -> dict[int, int]:
 
     Returns
     -------
-    dict[int, int]
-        Mapping from user ID to ground-truth item ID.
+    dict[int, set[int]]
+        Mapping from user ID to set of ground-truth item IDs.
     """
     con = duckdb.connect()
     rows = con.execute(f"""
@@ -59,4 +59,10 @@ def load_truth(test_path: str | Path) -> dict[int, int]:
         FROM read_parquet('{Path(test_path).as_posix()}')
     """).fetchall()
     con.close()
-    return {int(uid): int(iid) for uid, iid in rows}
+    truth: dict[int, set[int]] = {}
+    for uid, iid in rows:
+        uid, iid = int(uid), int(iid)
+        if uid not in truth:
+            truth[uid] = set()
+        truth[uid].add(iid)
+    return truth

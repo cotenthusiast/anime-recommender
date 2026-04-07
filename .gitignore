@@ -52,6 +52,7 @@ data/raw/
 data/processed/
 data/interim/
 data/external/
+data/raw_backup
 
 # Data file formats
 *.parquet
@@ -78,3 +79,6 @@ runs/
 tmp/
 temp/
 *.tmp
+
+models/
+*.npz

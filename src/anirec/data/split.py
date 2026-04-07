@@ -1,13 +1,14 @@
 """Train / validation / test splitting.
 
-Uses a deterministic hash-based leave-one-out strategy:
+Uses a deterministic hash-based multiple-holdout strategy:
 - Each eligible user (≥ ``min_positive_per_user`` positively-rated items)
-  contributes exactly **one** item to the test set and **one** to the
-  validation set.  The remainder goes to training.
+  contributes exactly **5** items to the test set and **5** to the
+  validation set. The remainder goes to training.
 - The split is reproducible for a given ``seed``.
 
 All heavy lifting is done inside DuckDB so the full 50 M-row dataset
-never needs to fit in memory.
+never needs to fit in memory. Intermediate results are materialised as
+tables (not views) to ensure consistent results across queries.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ def run(
     ratings_path: str = "data/processed/ratings.parquet",
     out_dir: str = "data/processed",
     positive_threshold: float = 8.0,
-    min_positive_per_user: int = 3,
+    min_positive_per_user: int = 20,
     seed: str = "42",
     threads: int = 4,
 ) -> None:
@@ -49,9 +50,10 @@ def run(
     con.execute(f"PRAGMA threads={threads}")
     con.execute("PRAGMA enable_progress_bar=true")
 
+
     # ── eligible users ───────────────────────────────────────────────
     con.execute(f"""
-        CREATE OR REPLACE VIEW eligible_users AS
+        CREATE OR REPLACE TABLE eligible_users AS
         SELECT user_id
         FROM read_parquet('{ratings_path}')
         WHERE rating >= {positive_threshold}
@@ -59,9 +61,20 @@ def run(
         HAVING COUNT(*) >= {min_positive_per_user}
     """)
 
+    check = con.execute(f"""
+        SELECT MIN(c), MAX(c) FROM (
+            SELECT user_id, COUNT(*) c
+            FROM read_parquet('{ratings_path}')
+            WHERE rating >= {positive_threshold}
+            GROUP BY user_id
+            HAVING COUNT(*) >= {min_positive_per_user}
+        ) t
+    """).fetchone()
+    print(f"eligible_users positive count (min, max): {check}")
+
     # ── eligible positive interactions ───────────────────────────────
     con.execute(f"""
-        CREATE OR REPLACE VIEW eligible_pos AS
+        CREATE OR REPLACE TABLE eligible_pos AS
         SELECT r.user_id, r.item_id, r.rating
         FROM read_parquet('{ratings_path}') AS r
         JOIN eligible_users u ON r.user_id = u.user_id
@@ -70,7 +83,7 @@ def run(
 
     # ── deterministic per-user ranking via md5 hash ──────────────────
     con.execute(f"""
-        CREATE OR REPLACE VIEW ranked_pos AS
+        CREATE OR REPLACE TABLE ranked_pos AS
         SELECT
             ep.user_id,
             ep.item_id,
@@ -86,21 +99,34 @@ def run(
         FROM eligible_pos ep
     """)
 
-    # ── split views ──────────────────────────────────────────────────
+    # ── split tables ─────────────────────────────────────────────────
     con.execute("""
-        CREATE OR REPLACE VIEW split_test AS
-        SELECT user_id, item_id, rating FROM ranked_pos WHERE rn = 1
+        CREATE OR REPLACE TABLE split_test AS
+        SELECT user_id, item_id, rating FROM ranked_pos WHERE rn BETWEEN 1 AND 5
     """)
     con.execute("""
-        CREATE OR REPLACE VIEW split_val AS
-        SELECT user_id, item_id, rating FROM ranked_pos WHERE rn = 2
+        CREATE OR REPLACE TABLE split_val AS
+        SELECT user_id, item_id, rating FROM ranked_pos WHERE rn BETWEEN 6 AND 10
     """)
-    con.execute("""
-        CREATE OR REPLACE VIEW split_train AS
-        SELECT user_id, item_id, rating FROM ranked_pos WHERE rn >= 3
+    con.execute(f"""
+        CREATE OR REPLACE TABLE split_train AS
+        SELECT r.user_id, r.item_id, r.rating
+        FROM read_parquet('{ratings_path}') AS r
+        JOIN eligible_users u ON r.user_id = u.user_id
+        WHERE (r.user_id, r.item_id) NOT IN (
+            SELECT user_id, item_id FROM split_test
+            UNION
+            SELECT user_id, item_id FROM split_val
+        )
     """)
 
     # ── sanity checks ────────────────────────────────────────────────
+    ranked_minmax = con.execute("""
+        SELECT MIN(c), MAX(c)
+        FROM (SELECT user_id, COUNT(*) c FROM ranked_pos GROUP BY user_id) t
+    """).fetchone()
+    print(f"ranked_pos per-user count (min, max): {ranked_minmax}")
+
     eligible_n = con.execute("SELECT COUNT(*) FROM eligible_users").fetchone()[0]
     test_n = con.execute("SELECT COUNT(*) FROM split_test").fetchone()[0]
     val_n = con.execute("SELECT COUNT(*) FROM split_val").fetchone()[0]

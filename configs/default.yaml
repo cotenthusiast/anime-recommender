@@ -19,7 +19,7 @@ prepare:
 
 split:
   positive_threshold: 8.0
-  min_positive_per_user: 3
+  min_positive_per_user: 15
   seed: "42"
   threads: 4
 
@@ -28,3 +28,8 @@ eval:
 
 models:
   bayesian_m: 524
+  svd:
+    k: 100
+    lr: 0.005
+    lambda_: 0.02
+    num_epochs: 50
