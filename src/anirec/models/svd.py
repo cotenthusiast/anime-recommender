@@ -100,7 +100,7 @@ class SVD(Recommender):
         self._item_map_reverse: dict[int, int] = {}
         self._user_seen: dict[int, set[int]] = {}
 
-    def fit(self, train_path: str, **kwargs) -> None:
+    def fit(self, train_path: str) -> None:
         """Learn P, Q, and bias terms from the training split.
 
         Parameters
@@ -196,8 +196,8 @@ class SVD(Recommender):
 
     def _build_maps(self, ratings: np.ndarray) -> None:
         """Build _user_map, _item_map, _item_map_reverse, and _user_seen."""
-        user_ids = list(set(int(x) for x in ratings[:, 0]))
-        item_ids = list(set(int(x) for x in ratings[:, 1]))
+        user_ids = sorted(set(int(x) for x in ratings[:, 0]))
+        item_ids = sorted(set(int(x) for x in ratings[:, 1]))
         self._user_map = {uid: idx for idx, uid in enumerate(user_ids)}
         self._item_map = {iid: idx for idx, iid in enumerate(item_ids)}
         self._item_map_reverse = {idx: iid for iid, idx in self._item_map.items()}

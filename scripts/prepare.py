@@ -5,7 +5,6 @@ Usage
 -----
     python scripts/prepare.py
     python scripts/prepare.py --config configs/default.yaml
-    python scripts/prepare.py --ratings-csv data/raw/my_ratings.csv
 """
 
 from __future__ import annotations
@@ -19,7 +18,6 @@ from anirec.data.prepare import run
 def main() -> None:
     ap = argparse.ArgumentParser(description="Convert raw CSVs to cleaned Parquet.")
     ap.add_argument("--config", type=str, default=None, help="Path to YAML config")
-    ap.add_argument("--ratings-csv", type=str, default=None, help="Explicit ratings CSV path")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -27,9 +25,15 @@ def main() -> None:
     prep = cfg["prepare"]
 
     run(
-        raw_dir=p["raw_dir"],
+        ratings_csv=prep["ratings_csv"],
+        user_col=prep["user_col"],
+        item_col=prep["item_col"],
+        rating_col=prep["rating_col"],
         out_dir=p["processed_dir"],
-        ratings_csv=args.ratings_csv,
+        items_csv=prep.get("items_csv"),
+        item_id_col=prep.get("item_id_col"),
+        title_col=prep.get("title_col"),
+        genres_col=prep.get("genres_col"),
         sample_n=prep["sample_n"],
         threads=prep["threads"],
     )

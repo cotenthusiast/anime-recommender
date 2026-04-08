@@ -36,7 +36,7 @@ class ContentBased(Recommender):
         self._user_seen: dict[int, set[int]] = {}
         self._user_profiles: dict[int, np.ndarray] = {}
 
-    def fit(self, train_path: str, **kwargs) -> None:
+    def fit(self, train_path: str) -> None:
         """Build item feature matrix and user profiles from training ratings.
 
         Parameters

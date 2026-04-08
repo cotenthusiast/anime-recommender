@@ -18,7 +18,7 @@ class PopularityUnfiltered(Recommender):
     def __init__(self) -> None:
         self._top_items: list[int] = []
 
-    def fit(self, train_path: str, **kwargs) -> None:
+    def fit(self, train_path: str) -> None:
         """Compute global item popularity from the training split.
 
         Parameters
@@ -61,7 +61,7 @@ class PopularityFiltered(Recommender):
         self._top_items: list[int] = []
         self._user_seen: dict[int, set[int]] = {}
 
-    def fit(self, train_path: str, **kwargs) -> None:
+    def fit(self, train_path: str) -> None:
         """Compute global popularity and per-user history.
 
         Parameters
@@ -136,7 +136,7 @@ class PopularityBayesianUnfiltered(Recommender):
         self._top_items: list[int] = []
         self._m = m
 
-    def fit(self, train_path: str, **kwargs) -> None:
+    def fit(self, train_path: str) -> None:
         """Compute Bayesian average scores from the training split.
 
         Parameters
@@ -191,7 +191,7 @@ class PopularityBayesianFiltered(Recommender):
         self._user_seen: dict[int, set[int]] = {}
         self._m = m
 
-    def fit(self, train_path: str, **kwargs) -> None:
+    def fit(self, train_path: str) -> None:
         """Compute Bayesian scores and per-user history.
 
         Parameters

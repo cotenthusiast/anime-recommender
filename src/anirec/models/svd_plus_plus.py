@@ -53,7 +53,7 @@ class SVDPlusPlus(Recommender):
         self._item_map: dict[int, int] = {}
         self._user_seen: dict[int, set[int]] = {}
 
-    def fit(self, train_path: str, **kwargs) -> None:
+    def fit(self, train_path: str) -> None:
         """Learn P, Q, and implicit factor matrix Y from the training split.
 
         Parameters

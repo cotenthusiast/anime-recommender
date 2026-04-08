@@ -42,7 +42,7 @@ class Hybrid(Recommender):
         self.cb_model = cb_model
         self.alpha = alpha
 
-    def fit(self, train_path: str, **kwargs) -> None:
+    def fit(self, train_path: str) -> None:
         """Fit both component models on the training split.
 
         Parameters

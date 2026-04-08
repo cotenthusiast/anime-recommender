@@ -34,7 +34,7 @@ def recall_at_k(recs: dict[int, list[int]], truth: dict[int, set[int]], k: int) 
     for user, actual in truth.items():
         recommendations = set(recs.get(user, [])[:k])
         hits = len(actual & recommendations)
-        scores.append(hits / len(actual))
+        scores.append(hits / len(actual) if actual else 0.0)
     return float(np.mean(scores))
 
 

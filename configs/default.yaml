@@ -15,6 +15,14 @@ paths:
   svd_model_path: "models/svd"
 
 prepare:
+  ratings_csv: "data/raw/animelist.csv"
+  user_col: "user_id"
+  item_col: "anime_id"
+  rating_col: "rating"
+  items_csv: "data/raw/anime.csv"
+  item_id_col: "MAL_ID"
+  title_col: "Name"
+  genres_col: "Genres"
   sample_n: 200_000
   threads: 4
 

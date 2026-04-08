@@ -15,7 +15,7 @@ class Recommender(ABC):
     """Interface shared by all recommendation models."""
 
     @abstractmethod
-    def fit(self, train_path: str, **kwargs) -> None:
+    def fit(self, train_path: str) -> None:
         """Train or precompute on the training split.
 
         Parameters
@@ -45,4 +45,4 @@ class Recommender(ABC):
         raise NotImplementedError(f"{self.__class__.__name__} does not support save")
 
     def load(self, path: str) -> None:
-        raise NotImplementedError(f"{self.__class__.__name__} does not support save")
+        raise NotImplementedError(f"{self.__class__.__name__} does not support load")

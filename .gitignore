@@ -80,5 +80,5 @@ tmp/
 temp/
 *.tmp
 
-models/
+/models/
 *.npz
